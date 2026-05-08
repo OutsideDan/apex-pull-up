@@ -4,7 +4,7 @@
 
 ## Phase 2: Adaptive Coaching
 
-**Status:** stub — not started
+**Status:** complete — shipped 2026-05-08
 
 Extend the tracker from a static HAPBEAR protocol to one that adapts based on logged performance.
 
