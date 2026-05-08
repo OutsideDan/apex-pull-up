@@ -105,6 +105,14 @@
   .band-pill[data-band="P"] { border-left: 3px solid #6b46c1; }
 
   .set-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .set-list { display: flex; flex-direction: column; gap: 8px; margin: 6px 0 12px; }
+  .set-item { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+  .set-item .set-num { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); min-width: 48px; }
+  .set-item input { width: 100%; }
+  .set-item .set-remove { background: none; border: none; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px; }
+  .set-item .set-remove:disabled { opacity: 0.25; cursor: not-allowed; }
+  .btn-addset { width: 100%; padding: 10px; background: transparent; border: 1px dashed var(--rule); border-radius: 6px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; margin-bottom: 12px; }
+  .btn-addset:hover { color: var(--pine); border-color: var(--pine); }
 
   .timer { text-align: center; padding: 18px 0 10px; }
   .timer .num {
@@ -269,6 +277,7 @@
     <div class="eyebrow">Today's Loadout</div>
     <h2 id="loadout-bands">—</h2>
     <div class="detail" id="loadout-detail">—</div>
+    <div class="detail" id="loadout-target" style="margin-top:6px;">—</div>
   </div>
   <div id="suggestion-box"></div>
   <div class="stat-grid">
@@ -294,16 +303,9 @@
       <div class="band-pill" data-band="P"><div>P</div><div class="lbl">100–125</div></div>
     </div>
     <hr class="div">
-    <div class="set-row">
-      <div class="field">
-        <label for="log-sets">Sets</label>
-        <input type="number" id="log-sets" value="3" inputmode="numeric">
-      </div>
-      <div class="field">
-        <label for="log-reps">Reps / set</label>
-        <input type="number" id="log-reps" value="8" inputmode="numeric">
-      </div>
-    </div>
+    <label>Reps per set</label>
+    <div class="set-list" id="set-list"></div>
+    <button type="button" class="btn-addset" id="set-add">+ Add set</button>
     <button class="btn btn-pine" id="log-save">Save Workout · Start Rest Timer</button>
   </div>
 
@@ -326,12 +328,6 @@
   <div class="card">
     <canvas id="chart" width="600" height="240"></canvas>
     <div class="chart-cap">Goal — trend toward zero assistance</div>
-  </div>
-
-  <div class="section-label">Export</div>
-  <div class="card">
-    <button class="btn btn-outline" id="export-btn">Generate Weekly Markdown</button>
-    <pre id="export-out" style="display:none; margin-top:14px;"></pre>
   </div>
 
   <div class="section-label">Profile</div>
@@ -394,6 +390,8 @@ const BANDS = {
 };
 const BAND_ORDER = ['P','B','R','O','Y'];
 const REST_SECONDS = 90;
+const TARGET_SETS = 3;
+const TARGET_REPS = 8;
 const LOOP_MULT  = { foot: 1.0, knee: 0.60, hip: 0.42 };
 const LOOP_LABEL = { foot: 'Foot loop', knee: 'Knee loop', hip: 'Hip loop' };
 
@@ -409,7 +407,7 @@ async function load() {
   if (currentUser.isGuest) {
     try {
       const raw = localStorage.getItem(GUEST_DATA_KEY);
-      if (raw) { const p = JSON.parse(raw); state.profile = p.profile || null; state.sessions = p.sessions || []; }
+      if (raw) { const p = JSON.parse(raw); state.profile = p.profile || null; state.sessions = (p.sessions || []).map(migrateSession); }
     } catch (e) {}
     return;
   }
@@ -419,7 +417,22 @@ async function load() {
   }
   const snap = await db.collection('accounts').doc(currentUser.username)
     .collection('pullups').orderBy('date', 'asc').get();
-  state.sessions = snap.docs.map(d => d.data());
+  state.sessions = snap.docs.map(d => d.data()).map(migrateSession);
+}
+
+function migrateSession(s) {
+  if (Array.isArray(s.reps)) return s;
+  const setCount = Number.isFinite(s.sets) && s.sets > 0 ? s.sets : 1;
+  const repCount = Number.isFinite(s.reps) && s.reps > 0 ? s.reps : 0;
+  const reps = Array(setCount).fill(repCount);
+  const { sets, ...rest } = s;
+  return { ...rest, reps };
+}
+
+function formatSets(reps) {
+  if (!Array.isArray(reps) || reps.length === 0) return '—';
+  if (reps.every(r => r === reps[0])) return `${reps.length}×${reps[0]}`;
+  return reps.join('/');
 }
 
 async function save() {
@@ -559,6 +572,8 @@ function recommendLoadout(weight, repBucket) {
     bands: best.bands,
     assist: best.mid,
     detail: `${LOOP_LABEL[state.profile?.loopPosition ?? 'knee']} · ~${Math.round(best.mid)} lb assist`,
+    targetSets: TARGET_SETS,
+    targetReps: TARGET_REPS,
   };
 }
 
@@ -568,7 +583,7 @@ function checkLevelUp() {
   if (state.sessions.length < 2) return null;
   const recent = state.sessions.slice(-2);
   if (JSON.stringify([...recent[0].bands].sort()) !== JSON.stringify([...recent[1].bands].sort())) return null;
-  if (!recent.every(s => s.sets >= 3 && s.reps >= 8)) return null;
+  if (!recent.every(s => Array.isArray(s.reps) && s.reps.length >= TARGET_SETS && s.reps.every(r => r >= TARGET_REPS))) return null;
   const cur = recent[0].bands;
   let next;
   if (cur.length > 1) {
@@ -608,6 +623,7 @@ function renderHome() {
   const rec = recommendLoadout(state.profile.weight, state.profile.repBucket);
   document.getElementById('loadout-bands').textContent = rec.bands.map(k => BANDS[k].name).join(' + ');
   document.getElementById('loadout-detail').textContent = rec.detail;
+  document.getElementById('loadout-target').textContent = `Target: ${rec.targetSets} sets × ${rec.targetReps} reps`;
   document.getElementById('stat-bw').textContent       = state.profile.weight + ' lb';
   document.getElementById('stat-sessions').textContent  = state.sessions.length;
   document.getElementById('stat-volume').textContent    = Math.round(totalVolume()).toLocaleString() + ' lb';
@@ -619,7 +635,7 @@ function renderHome() {
   if (suggestion?.done) {
     sb.innerHTML = '<div class="suggestion"><span class="lbl">Milestone</span>You\'ve cleared the lightest band. Try unassisted.</div>';
   } else if (suggestion) {
-    sb.innerHTML = `<div class="suggestion"><span class="lbl">2-Workout Rule</span>Two clean 3×8 at ${suggestion.from.map(k => BANDS[k].name).join(' + ')}. Suggested next loadout: <b>${suggestion.to.map(k => BANDS[k].name).join(' + ')}</b>.</div>`;
+    sb.innerHTML = `<div class="suggestion"><span class="lbl">2-Workout Rule</span>Two clean ${TARGET_SETS}×${TARGET_REPS} at ${suggestion.from.map(k => BANDS[k].name).join(' + ')}. Suggested next loadout: <b>${suggestion.to.map(k => BANDS[k].name).join(' + ')}</b>.</div>`;
   } else {
     sb.innerHTML = '';
   }
@@ -634,7 +650,7 @@ function renderHome() {
       return `<div class="hist-row">
         <div>
           <div class="hist-bands">${s.bands.map(k => BANDS[k].name).join(' + ')}${isPR ? '<span class="pill-pr">PR</span>' : ''}</div>
-          <div class="hist-meta">${s.sets}×${s.reps} · ${Math.round(s.assist)} lb assist · ${formatDate(s.date)}</div>
+          <div class="hist-meta">${formatSets(s.reps)} · ${Math.round(s.assist)} lb assist · ${formatDate(s.date)}</div>
         </div>
         <div>
           <div class="hist-vol">${Math.round(s.volume).toLocaleString()}</div>
@@ -709,32 +725,6 @@ function renderChart() {
 
   ctx.fillStyle = '#6B6457'; ctx.textAlign = 'center';
   ctx.fillText(`${data.length} session${data.length === 1 ? '' : 's'}`, pad.l + w/2, cssH - 8);
-}
-
-// ── Markdown export ───────────────────────────────────────────
-
-function exportMarkdown() {
-  if (state.sessions.length === 0) return '_No sessions to export._';
-  const weeks = {};
-  state.sessions.forEach(s => {
-    const d = new Date(s.date);
-    const onejan = new Date(d.getFullYear(), 0, 1);
-    const wk = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
-    const key = `${d.getFullYear()}-W${String(wk).padStart(2,'0')}`;
-    (weeks[key] = weeks[key] || []).push(s);
-  });
-  let out = `# Apex Pull-Up Tracker — Weekly Summary\n\n**Body weight:** ${state.profile.weight} lb\n**Total sessions:** ${state.sessions.length}\n**Total volume:** ${Math.round(totalVolume()).toLocaleString()} lb\n\n`;
-  Object.keys(weeks).sort().reverse().forEach(wk => {
-    out += `## ${wk}\n\n| Date | Bands | Sets×Reps | Assist (lb) | Volume (lb) |\n|------|-------|-----------|-------------|-------------|\n`;
-    weeks[wk].forEach(s => {
-      const date = new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-      out += `| ${date} | ${s.bands.map(k => BANDS[k].name).join(' + ')} | ${s.sets}×${s.reps} | ${Math.round(s.assist)} | ${Math.round(s.volume).toLocaleString()} |\n`;
-    });
-    const wkVol = weeks[wk].reduce((a,s) => a + s.volume, 0);
-    const wkAvg = weeks[wk].reduce((a,s) => a + s.assist, 0) / weeks[wk].length;
-    out += `\n**Week total:** ${Math.round(wkVol).toLocaleString()} lb · **Avg assist:** ${Math.round(wkAvg)} lb\n\n`;
-  });
-  return out;
 }
 
 // ── Rest timer ────────────────────────────────────────────────
@@ -834,35 +824,60 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Set list management
+  function paintSetList(values) {
+    const list = document.getElementById('set-list');
+    list.innerHTML = values.map((v, i) => `
+      <div class="set-item">
+        <div class="set-num">Set ${i + 1}</div>
+        <input type="number" inputmode="numeric" min="0" value="${v}" data-set-index="${i}">
+        <button type="button" class="set-remove" aria-label="Remove set" ${values.length === 1 ? 'disabled' : ''}>×</button>
+      </div>
+    `).join('');
+    list.querySelectorAll('.set-remove').forEach((btn, i) => {
+      btn.addEventListener('click', () => {
+        const current = Array.from(list.querySelectorAll('.set-item input')).map(inp => inp.value);
+        if (current.length <= 1) return;
+        current.splice(i, 1);
+        paintSetList(current);
+      });
+    });
+  }
+  function resetSetList() {
+    paintSetList(Array(TARGET_SETS).fill(String(TARGET_REPS)));
+  }
+  resetSetList();
+
+  document.getElementById('set-add').addEventListener('click', () => {
+    const list = document.getElementById('set-list');
+    const current = Array.from(list.querySelectorAll('.set-item input')).map(inp => inp.value);
+    current.push(String(TARGET_REPS));
+    paintSetList(current);
+  });
+
   // Log workout
   document.getElementById('log-save').addEventListener('click', () => {
     if (!state.profile) { toast('Set up profile first'); showView('setup'); return; }
     if (state.selectedBands.length === 0) { toast('Select at least one band'); return; }
-    const sets = parseInt(document.getElementById('log-sets').value, 10);
-    const reps = parseInt(document.getElementById('log-reps').value, 10);
-    if (!sets || !reps || sets < 1 || reps < 1) { toast('Enter sets and reps'); return; }
+    const inputs = Array.from(document.querySelectorAll('#set-list .set-item input'));
+    const reps = inputs.map(inp => parseInt(inp.value, 10)).filter(n => Number.isFinite(n) && n > 0);
+    if (reps.length === 0) { toast('Enter reps for at least one set'); return; }
     const assist   = state.selectedBands.reduce((a, k) => a + adjustedMid(k), 0);
-    const volume   = sets * reps * (state.profile.weight - assist);
+    const totalReps = reps.reduce((a, r) => a + r, 0);
+    const volume   = totalReps * (state.profile.weight - assist);
     const id       = String(Date.now());
-    state.sessions.push({ id, date: new Date().toISOString(), bands: [...state.selectedBands], sets, reps, assist, volume });
+    state.sessions.push({ id, date: new Date().toISOString(), bands: [...state.selectedBands], reps, assist, volume });
     save();
     toast(`Logged · ${Math.round(volume).toLocaleString()} lb volume`);
     state.selectedBands = [];
     document.querySelectorAll('#band-grid .band-pill').forEach(p => p.classList.remove('active'));
+    resetSetList();
     startTimer();
   });
 
   // Timer
   document.getElementById('timer-start').addEventListener('click', startTimer);
   document.getElementById('timer-reset').addEventListener('click', resetTimer);
-
-  // Export
-  document.getElementById('export-btn').addEventListener('click', () => {
-    const md = exportMarkdown();
-    const out = document.getElementById('export-out');
-    out.textContent = md; out.style.display = 'block';
-    try { navigator.clipboard.writeText(md); toast('Markdown copied'); } catch(e) { toast('Markdown ready below'); }
-  });
 
   // Profile edit
   document.getElementById('edit-save').addEventListener('click', () => {
