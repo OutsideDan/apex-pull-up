@@ -600,8 +600,15 @@ function recommendDeload(currentRepBucket, weight, loopPosition) {
   all.forEach(c => { c.score = Math.abs(c.mid - targetAssist) + (c.bands.length - 1) * 4; });
   all.sort((a, b) => a.score - b.score);
   const best = all[0];
-  const currentRec = recommendLoadout(weight, currentRepBucket);
-  if (best.mid <= currentRec.assist) return null;
+  const currentTargets = { '0-5': 0.55, '5-8': 0.40, '8-10': 0.28, '10-12': 0.18, '12-15': 0.08 };
+  const currentTargetAssist = (currentTargets[currentRepBucket] ?? 0.30) * weight;
+  const currentCandidates = [...keys.map(k => ({ bands: [k], mid: adj(k) }))];
+  for (let i = 0; i < keys.length; i++)
+    for (let j = i + 1; j < keys.length; j++)
+      currentCandidates.push({ bands: [keys[i], keys[j]], mid: adj(keys[i]) + adj(keys[j]) });
+  currentCandidates.forEach(c => { c.score = Math.abs(c.mid - currentTargetAssist) + (c.bands.length - 1) * 4; });
+  currentCandidates.sort((a, b) => a.score - b.score);
+  if (best.mid <= currentCandidates[0].mid) return null;
   return {
     bands: best.bands,
     assist: best.mid,
