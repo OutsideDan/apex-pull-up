@@ -648,6 +648,23 @@ function checkDeload(sessions) {
   return { type: 'deload', rec, avg: Math.round(avg * 10) / 10 };
 }
 
+function checkHold(sessions) {
+  if (sessions.length < 2) return null;
+  const recent = sessions.slice(-2);
+  if (JSON.stringify([...recent[0].bands].sort()) !== JSON.stringify([...recent[1].bands].sort())) return null;
+  const bothClear = recent.every(s => Array.isArray(s.reps) && s.reps.length >= TARGET_SETS && s.reps.every(r => r >= TARGET_REPS));
+  if (bothClear) return null;
+  return { type: 'hold', bands: recent[0].bands };
+}
+
+function checkRecalibrate(sessions) {
+  if (sessions.length < 1) return null;
+  const last = sessions[sessions.length - 1];
+  if (last.bands.length !== 0) return null;
+  if (!last.reps.some(r => r > 0)) return null;
+  return { type: 'recalibrate', currentBucket: state.profile.repBucket };
+}
+
 const totalVolume  = () => state.sessions.reduce((s, x) => s + x.volume, 0);
 const currentFloor = () => state.sessions.length === 0 ? null : state.sessions[state.sessions.length - 1].assist;
 
