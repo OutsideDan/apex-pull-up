@@ -700,11 +700,21 @@ function renderHome() {
   document.getElementById('stat-floor').textContent = floor === null ? '—' : Math.round(floor) + ' lb';
 
   const sb = document.getElementById('suggestion-box');
-  const suggestion = checkLevelUp();
-  if (suggestion?.done) {
+  const deload  = checkDeload(state.sessions);
+  const hold    = checkHold(state.sessions);
+  const levelUp = checkLevelUp();
+  const recal   = checkRecalibrate(state.sessions);
+
+  if (deload) {
+    sb.innerHTML = `<div class="suggestion"><span class="lbl">Struggling</span>Last 3 sessions averaged ${deload.avg} reps/set. Suggested loadout: <b>${deload.rec.bands.map(k => BANDS[k].name).join(' + ')}</b>.</div>`;
+  } else if (hold) {
+    sb.innerHTML = `<div class="suggestion"><span class="lbl">Hold Steady</span>Last 2 sessions on ${hold.bands.map(k => BANDS[k].name).join(' + ')} didn't clear ${TARGET_SETS}×${TARGET_REPS}. Stay here.</div>`;
+  } else if (levelUp?.done) {
     sb.innerHTML = '<div class="suggestion"><span class="lbl">Milestone</span>You\'ve cleared the lightest band. Try unassisted.</div>';
-  } else if (suggestion) {
-    sb.innerHTML = `<div class="suggestion"><span class="lbl">2-Workout Rule</span>Two clean ${TARGET_SETS}×${TARGET_REPS} at ${suggestion.from.map(k => BANDS[k].name).join(' + ')}. Suggested next loadout: <b>${suggestion.to.map(k => BANDS[k].name).join(' + ')}</b>.</div>`;
+  } else if (levelUp) {
+    sb.innerHTML = `<div class="suggestion"><span class="lbl">2-Workout Rule</span>Two clean ${TARGET_SETS}×${TARGET_REPS} at ${levelUp.from.map(k => BANDS[k].name).join(' + ')}. Suggested next loadout: <b>${levelUp.to.map(k => BANDS[k].name).join(' + ')}</b>.</div>`;
+  } else if (recal) {
+    sb.innerHTML = `<div class="suggestion"><span class="lbl">Unassisted Rep Logged</span>You logged reps without bands. <button class="btn btn-outline" style="margin-top:8px;width:100%" onclick="prefillSetup();showView('setup')">Update Starting Point</button></div>`;
   } else {
     sb.innerHTML = '';
   }
