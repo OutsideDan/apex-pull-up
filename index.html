@@ -165,6 +165,7 @@
   }
   .nav button.active { color: var(--pine); border-top-color: var(--pine); }
   .nav button .icon { display: block; font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; margin-bottom: 4px; line-height: 1; }
+  .nav button .icon-svg { display: block; width: 18px; height: 18px; margin: 0 auto 4px; stroke: currentColor; fill: none; stroke-width: 1.75; }
 
   .view { display: none; }
   .view.active { display: block; }
@@ -268,6 +269,8 @@
       </div>
     </div>
     <button class="btn btn-pine" id="setup-save">Calculate My Loadout</button>
+    <hr class="div">
+    <button class="btn btn-rust" id="sign-out-btn">Sign Out</button>
   </div>
 </div>
 
@@ -345,8 +348,6 @@
       </select>
     </div>
     <button class="btn btn-moss" id="edit-save">Update Profile</button>
-    <hr class="div">
-    <button class="btn btn-rust" id="sign-out-btn">Sign Out</button>
   </div>
 </div>
 
@@ -355,7 +356,7 @@
   <button data-view="home"><span class="icon">⌂</span>Home</button>
   <button data-view="log"><span class="icon">+</span>Log</button>
   <button data-view="progress"><span class="icon">▲</span>Progress</button>
-  <button data-view="setup"><span class="icon">⚙</span>Setup</button>
+  <button data-view="setup"><svg class="icon-svg" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>Setup</button>
 </nav>
 
 <div class="toast" id="toast"></div>
