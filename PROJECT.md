@@ -1,7 +1,7 @@
 # Apex Pull-Up Tracker
 
 **Status:** active
-**Last updated:** 2026-05-08 (initial deploy)
+**Last updated:** 2026-05-08 (fix: update URLs to kebab-case repo name apex-pull-up)
 
 ## What it is
 Single-file webapp that coaches Dan through the HAPBEAR banded pull-up protocol toward unassisted pull-ups. Used on an iPad in the basement gym. Login shared with SendIt (same username + PIN).
