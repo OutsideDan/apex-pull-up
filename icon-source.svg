@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Rounded square background: Apex pine -->
+  <rect width="512" height="512" rx="96" ry="96" fill="#2C3B2D"/>
+
+  <!-- Horizontal pull-up bar -->
+  <rect x="80" y="148" width="352" height="22" rx="11" ry="11" fill="#F2EDE4"/>
+
+  <!-- Left grip post -->
+  <rect x="130" y="148" width="22" height="56" rx="6" ry="6" fill="#F2EDE4"/>
+
+  <!-- Right grip post -->
+  <rect x="360" y="148" width="22" height="56" rx="6" ry="6" fill="#F2EDE4"/>
+
+  <!-- Left hand (rounded rectangle grip) -->
+  <rect x="118" y="196" width="46" height="20" rx="10" ry="10" fill="#F2EDE4"/>
+
+  <!-- Right hand (rounded rectangle grip) -->
+  <rect x="348" y="196" width="46" height="20" rx="10" ry="10" fill="#F2EDE4"/>
+
+  <!-- Torso / body -->
+  <rect x="228" y="216" width="56" height="120" rx="20" ry="20" fill="#F2EDE4"/>
+
+  <!-- Arms: left arm from left hand to shoulders -->
+  <line x1="141" y1="210" x2="240" y2="230" stroke="#F2EDE4" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- Arms: right arm from right hand to shoulders -->
+  <line x1="371" y1="210" x2="272" y2="230" stroke="#F2EDE4" stroke-width="22" stroke-linecap="round"/>
+
+  <!-- Head -->
+  <circle cx="256" cy="188" r="36" fill="#F2EDE4"/>
+
+  <!-- Left leg -->
+  <line x1="242" y1="330" x2="214" y2="400" stroke="#F2EDE4" stroke-width="20" stroke-linecap="round"/>
+
+  <!-- Right leg -->
+  <line x1="270" y1="330" x2="298" y2="400" stroke="#F2EDE4" stroke-width="20" stroke-linecap="round"/>
+</svg>

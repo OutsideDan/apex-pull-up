@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F2EDE4">
+<title>Apex Pull-Up Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,900;1,9..144,300&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js" defer></script>
+<style>
+  :root {
+    --chalk: #F2EDE4;
+    --pine:  #2C3B2D;
+    --moss:  #4A6741;
+    --grain: #C4A882;
+    --bark:  #7A5C3A;
+    --sky:   #8FAFC0;
+    --rust:  #B05E3A;
+    --text:  #1E1E1B;
+    --muted: #6B6457;
+    --rule:  rgba(44,59,45,0.12);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    background-color: var(--chalk);
+    color: var(--text);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.025'/%3E%3C/svg%3E");
+    min-height: 100vh;
+    padding: env(safe-area-inset-top) 20px calc(96px + env(safe-area-inset-bottom));
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  h1 { font-family: 'Fraunces', serif; font-weight: 900; color: var(--pine); line-height: 1.05; letter-spacing: -0.5px; }
+  h2 { font-family: 'Fraunces', serif; font-weight: 600; color: var(--pine); }
+  h3 { font-family: 'Fraunces', serif; font-weight: 600; color: var(--pine); font-size: 16px; }
+  .eyebrow { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .goal-line { font-family: 'Fraunces', serif; font-style: italic; font-weight: 300; color: var(--bark); font-size: 16px; line-height: 1.55; }
+
+  .site-header { padding: 28px 0 20px; margin-bottom: 24px; border-bottom: 1.5px solid var(--rule); }
+  .site-header .eyebrow { margin-bottom: 6px; }
+  .site-header h1 { font-size: 36px; }
+  .site-header h1 .italic { font-style: italic; font-weight: 300; }
+  .site-header .sub { margin-top: 6px; font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .site-header .save-status { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--moss); opacity: 0; transition: opacity 0.3s; margin-top: 2px; min-height: 16px; }
+
+  .section-label { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); margin: 32px 0 12px; }
+
+  .card { background: #fff; border: 1.5px solid var(--rule); border-radius: 4px; padding: 20px; margin-bottom: 14px; }
+  .pine-block { background: var(--pine); color: var(--chalk); border-radius: 6px; padding: 24px; margin-bottom: 16px; }
+  .pine-block .eyebrow { color: rgba(242,237,228,0.55); margin-bottom: 8px; }
+  .pine-block h2 { color: var(--chalk); font-size: 24px; margin-bottom: 6px; }
+  .pine-block .detail { font-size: 13px; color: rgba(242,237,228,0.78); line-height: 1.5; }
+
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 4px 0 8px; }
+  .stat { background: #fff; border: 1.5px solid var(--rule); border-radius: 4px; padding: 14px; }
+  .stat .k { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 6px; }
+  .stat .v { font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; color: var(--pine); }
+
+  .field { margin-bottom: 16px; }
+  label { display: block; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+  input, select {
+    width: 100%; background: #fff; border: 1.5px solid var(--rule); border-radius: 3px;
+    padding: 11px 12px; color: var(--text); font-size: 16px; font-family: 'DM Sans', sans-serif; font-weight: 400;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--moss); }
+
+  .btn {
+    font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 500; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 12px 18px; border: 1.5px solid; border-radius: 3px;
+    cursor: pointer; transition: background 0.15s, color 0.15s; background: transparent;
+    width: 100%; text-align: center;
+  }
+  .btn:active { transform: scale(0.99); }
+  .btn-pine { background: var(--pine); color: var(--chalk); border-color: var(--pine); }
+  .btn-pine:hover { background: #3d5440; }
+  .btn-outline { color: var(--pine); border-color: var(--pine); }
+  .btn-moss { color: var(--moss); border-color: var(--moss); }
+  .btn-moss:hover { background: var(--moss); color: #fff; }
+  .btn-rust { color: var(--rust); border-color: var(--rust); }
+  .btn-rust:hover { background: var(--rust); color: #fff; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .band-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin: 6px 0 4px; }
+  .band-pill {
+    padding: 14px 4px; border-radius: 3px; text-align: center;
+    font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+    border: 2px solid transparent; cursor: pointer; user-select: none;
+    background: #fff; color: var(--muted);
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .band-pill .lbl { font-size: 9px; opacity: 0.75; margin-top: 3px; letter-spacing: 0.05em; }
+  .band-pill[data-band="Y"].active { background: #f5d300; color: #000; border-color: var(--pine); }
+  .band-pill[data-band="O"].active { background: #d97706; color: #fff; border-color: var(--pine); }
+  .band-pill[data-band="R"].active { background: #b91c1c; color: #fff; border-color: var(--pine); }
+  .band-pill[data-band="B"].active { background: var(--sky); color: var(--pine); border-color: var(--pine); }
+  .band-pill[data-band="P"].active { background: #6b46c1; color: #fff; border-color: var(--pine); }
+  .band-pill[data-band="Y"] { border-left: 3px solid #d4b500; }
+  .band-pill[data-band="O"] { border-left: 3px solid var(--rust); }
+  .band-pill[data-band="R"] { border-left: 3px solid #b91c1c; }
+  .band-pill[data-band="B"] { border-left: 3px solid var(--sky); }
+  .band-pill[data-band="P"] { border-left: 3px solid #6b46c1; }
+
+  .set-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  .timer { text-align: center; padding: 18px 0 10px; }
+  .timer .num {
+    font-family: 'Fraunces', serif; font-weight: 900; font-size: 64px;
+    color: var(--pine); font-variant-numeric: tabular-nums; letter-spacing: -2px; line-height: 1;
+  }
+  .timer .num.warn { color: var(--rust); }
+  .timer .num.go { color: var(--moss); }
+  .timer-label { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-top: 6px; }
+
+  .suggestion {
+    background: rgba(74,103,65,0.10); border-left: 3px solid var(--moss); border-radius: 0 4px 4px 0;
+    padding: 14px 16px; margin-bottom: 14px; font-size: 14px; line-height: 1.5; color: var(--pine);
+  }
+  .suggestion .lbl { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--moss); display: block; margin-bottom: 4px; }
+  .suggestion b { font-family: 'Fraunces', serif; font-weight: 600; }
+
+  .hist-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--rule); gap: 12px; }
+  .hist-row:last-child { border: none; padding-bottom: 4px; }
+  .hist-row:first-child { padding-top: 4px; }
+  .hist-bands { font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px; color: var(--pine); }
+  .hist-meta { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .hist-vol { font-family: 'Fraunces', serif; font-weight: 600; font-size: 15px; color: var(--pine); text-align: right; white-space: nowrap; }
+  .hist-vol-lbl { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .pill-pr { display: inline-block; font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 7px; border-radius: 20px; background: var(--moss); color: #fff; margin-left: 6px; vertical-align: 2px; }
+
+  canvas { width: 100%; height: 240px; display: block; background: #fff; border-radius: 3px; }
+  .chart-cap { text-align: center; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .empty { text-align: center; color: var(--muted); padding: 28px 12px; font-style: italic; font-family: 'Fraunces', serif; font-weight: 300; font-size: 15px; }
+
+  pre {
+    background: var(--chalk); border: 1.5px solid var(--rule); border-radius: 3px;
+    padding: 14px; font-size: 11px; overflow-x: auto; white-space: pre-wrap;
+    font-family: 'DM Mono', monospace; line-height: 1.55; color: var(--text);
+  }
+
+  .nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--chalk); border-top: 1.5px solid var(--rule);
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    padding: 8px env(safe-area-inset-right) calc(8px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    z-index: 50; max-width: 640px; margin: 0 auto;
+  }
+  .nav button {
+    background: transparent; border: none; padding: 8px 4px; cursor: pointer;
+    font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted);
+    border-top: 2px solid transparent; margin-top: -8px; padding-top: 10px;
+  }
+  .nav button.active { color: var(--pine); border-top-color: var(--pine); }
+  .nav button .icon { display: block; font-family: 'Fraunces', serif; font-weight: 600; font-size: 18px; margin-bottom: 4px; line-height: 1; }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .toast {
+    position: fixed; bottom: 96px; left: 20px; right: 20px;
+    background: var(--pine); color: var(--chalk); padding: 12px 16px;
+    border-radius: 3px; text-align: center; z-index: 100;
+    font-family: 'DM Mono', monospace; font-size: 12px; font-weight: 500;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    opacity: 0; transition: opacity 0.2s; pointer-events: none;
+    max-width: 600px; margin: 0 auto;
+  }
+  .toast.show { opacity: 1; }
+
+  hr.div { border: none; border-top: 1px solid var(--rule); margin: 14px 0; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="eyebrow">Project Apex × Strength</div>
+  <h1>Pull-Up <span class="italic">Tracker</span></h1>
+  <div class="sub" id="header-sub">Zero to proficiency · resistance band protocol</div>
+  <div class="save-status" id="saveStatus">✓ Saved</div>
+</header>
+
+<!-- ACCOUNT -->
+<div class="view" id="view-account">
+  <div class="section-label">Welcome</div>
+  <p class="goal-line" style="margin-bottom:24px;">Same account as SendIt — your username and PIN work in both apps.</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-bottom:20px;">
+    <button class="btn btn-pine" id="tab-login-btn">Log In</button>
+    <button class="btn btn-outline" id="tab-create-btn">Create Account</button>
+  </div>
+
+  <div id="tab-login" class="card">
+    <div class="field">
+      <label for="login-username">Username</label>
+      <input type="text" id="login-username" placeholder="e.g. dlucas" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="field">
+      <label for="login-pin">PIN</label>
+      <input type="password" id="login-pin" placeholder="4–8 digits" inputmode="numeric" autocomplete="current-password">
+    </div>
+    <button class="btn btn-pine" id="login-btn">Log In</button>
+    <div id="login-error" style="color:var(--rust); font-family:'DM Mono',monospace; font-size:11px; margin-top:10px; display:none;"></div>
+  </div>
+
+  <div id="tab-create" class="card" style="display:none;">
+    <div class="field">
+      <label for="create-username">Username</label>
+      <input type="text" id="create-username" placeholder="2–20 chars, letters/numbers" autocomplete="username" autocapitalize="none">
+    </div>
+    <div class="field">
+      <label for="create-pin">PIN</label>
+      <input type="password" id="create-pin" placeholder="4–8 digits" inputmode="numeric" autocomplete="new-password">
+    </div>
+    <button class="btn btn-pine" id="create-btn">Create Account</button>
+    <div id="create-error" style="color:var(--rust); font-family:'DM Mono',monospace; font-size:11px; margin-top:10px; display:none;"></div>
+  </div>
+
+  <div style="margin-top:14px;">
+    <button class="btn btn-outline" id="guest-btn">Continue as Guest</button>
+    <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:8px; text-align:center;">
+      Guest data saves locally. Create an account to sync across devices.
+    </div>
+  </div>
+</div>
+
+<!-- PROFILE SETUP -->
+<div class="view" id="view-setup">
+  <div class="section-label">Profile Setup</div>
+  <div class="card">
+    <p class="goal-line" style="margin-bottom: 18px;">Tell the tracker your starting point. It maps you to the HAPBEAR resistance matrix and prescribes today's loadout.</p>
+    <div class="field">
+      <label for="setup-weight">Body weight (lbs)</label>
+      <input type="number" id="setup-weight" placeholder="e.g. 185" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Current max unassisted reps</label>
+      <select id="setup-reps">
+        <option value="">Select range...</option>
+        <option value="0-5">0–5 reps</option>
+        <option value="5-8">5–8 reps</option>
+        <option value="8-10">8–10 reps</option>
+        <option value="10-12">10–12 reps</option>
+        <option value="12-15">12–15 reps</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Band loop position</label>
+      <select id="setup-loop">
+        <option value="foot">Foot — full stretch, standard ceiling</option>
+        <option value="knee" selected>Knee — short ceiling (your setup)</option>
+        <option value="hip">Hip — very limited stretch</option>
+      </select>
+      <div style="font-family:'DM Mono',monospace; font-size:10px; color:var(--muted); margin-top:6px; line-height:1.5;">
+        Knee loop delivers ~60% of a band's rated assist. The app adjusts your loadout recommendation and chart accordingly.
+      </div>
+    </div>
+    <button class="btn btn-pine" id="setup-save">Calculate My Loadout</button>
+  </div>
+</div>
+
+<!-- HOME -->
+<div class="view" id="view-home">
+  <div class="pine-block">
+    <div class="eyebrow">Today's Loadout</div>
+    <h2 id="loadout-bands">—</h2>
+    <div class="detail" id="loadout-detail">—</div>
+  </div>
+  <div id="suggestion-box"></div>
+  <div class="stat-grid">
+    <div class="stat"><div class="k">Body weight</div><div class="v" id="stat-bw">—</div></div>
+    <div class="stat"><div class="k">Sessions</div><div class="v" id="stat-sessions">0</div></div>
+    <div class="stat"><div class="k">Total volume</div><div class="v" id="stat-volume">0</div></div>
+    <div class="stat"><div class="k">Resistance floor</div><div class="v" id="stat-floor">—</div></div>
+  </div>
+  <div class="section-label">Recent Sessions</div>
+  <div class="card" id="recent-list"><div class="empty">No sessions logged yet.</div></div>
+</div>
+
+<!-- LOG -->
+<div class="view" id="view-log">
+  <div class="section-label">Log a Set</div>
+  <div class="card">
+    <label>Bands (toggle to stack)</label>
+    <div class="band-grid" id="band-grid">
+      <div class="band-pill" data-band="Y"><div>Y</div><div class="lbl">5–10</div></div>
+      <div class="band-pill" data-band="O"><div>O</div><div class="lbl">15–30</div></div>
+      <div class="band-pill" data-band="R"><div>R</div><div class="lbl">30–60</div></div>
+      <div class="band-pill" data-band="B"><div>B</div><div class="lbl">60–100</div></div>
+      <div class="band-pill" data-band="P"><div>P</div><div class="lbl">100–125</div></div>
+    </div>
+    <hr class="div">
+    <div class="set-row">
+      <div class="field">
+        <label for="log-sets">Sets</label>
+        <input type="number" id="log-sets" value="3" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="log-reps">Reps / set</label>
+        <input type="number" id="log-reps" value="8" inputmode="numeric">
+      </div>
+    </div>
+    <button class="btn btn-pine" id="log-save">Save Workout · Start Rest Timer</button>
+  </div>
+
+  <div class="section-label">Rest Timer</div>
+  <div class="card">
+    <div class="timer">
+      <div class="num" id="timer-num">1:30</div>
+      <div class="timer-label">90 second protocol</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-moss" id="timer-start">Start 1:30</button>
+      <button class="btn btn-outline" id="timer-reset">Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRESS -->
+<div class="view" id="view-progress">
+  <div class="section-label">Resistance Floor</div>
+  <div class="card">
+    <canvas id="chart" width="600" height="240"></canvas>
+    <div class="chart-cap">Goal — trend toward zero assistance</div>
+  </div>
+
+  <div class="section-label">Export</div>
+  <div class="card">
+    <button class="btn btn-outline" id="export-btn">Generate Weekly Markdown</button>
+    <pre id="export-out" style="display:none; margin-top:14px;"></pre>
+  </div>
+
+  <div class="section-label">Profile</div>
+  <div class="card">
+    <div class="field">
+      <label for="edit-weight">Body weight (lbs)</label>
+      <input type="number" id="edit-weight" inputmode="numeric">
+    </div>
+    <div class="field">
+      <label>Band loop position</label>
+      <select id="edit-loop">
+        <option value="foot">Foot</option>
+        <option value="knee">Knee</option>
+        <option value="hip">Hip</option>
+      </select>
+    </div>
+    <button class="btn btn-moss" id="edit-save">Update Profile</button>
+    <hr class="div">
+    <button class="btn btn-rust" id="sign-out-btn">Sign Out</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="nav" id="nav">
+  <button data-view="home"><span class="icon">⌂</span>Home</button>
+  <button data-view="log"><span class="icon">+</span>Log</button>
+  <button data-view="progress"><span class="icon">▲</span>Progress</button>
+  <button data-view="setup"><span class="icon">⚙</span>Setup</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Firebase ──────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyAgMOSs7_6C6ZSAuqgRtsR8pXeXnEkwlwA",
+  authDomain:        "sendit-67c81.firebaseapp.com",
+  projectId:         "sendit-67c81",
+  storageBucket:     "sendit-67c81.firebasestorage.app",
+  messagingSenderId: "710942811721",
+  appId:             "1:710942811721:web:74493e7bd850403eedc198"
+};
+let db = null;
+let currentUser = null; // { username } | { username: 'Guest', isGuest: true }
+const LOCAL_USER_KEY = 'apex_pullup_user';
+const GUEST_DATA_KEY = 'apex_pullup_guest';
+
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── Resistance Matrix ─────────────────────────────────────────
+const BANDS = {
+  Y: { name: 'Yellow', level: 1, min: 5,   max: 10,  mid: 7.5   },
+  O: { name: 'Orange', level: 2, min: 15,  max: 30,  mid: 22.5  },
+  R: { name: 'Red',    level: 3, min: 30,  max: 60,  mid: 45    },
+  B: { name: 'Blue',   level: 4, min: 60,  max: 100, mid: 80    },
+  P: { name: 'Purple', level: 5, min: 100, max: 125, mid: 112.5 },
+};
+const BAND_ORDER = ['P','B','R','O','Y'];
+const REST_SECONDS = 90;
+const LOOP_MULT  = { foot: 1.0, knee: 0.60, hip: 0.42 };
+const LOOP_LABEL = { foot: 'Foot loop', knee: 'Knee loop', hip: 'Hip loop' };
+
+function loopMult()         { return LOOP_MULT[state.profile?.loopPosition ?? 'knee']; }
+function adjustedMid(k)     { return BANDS[k].mid * loopMult(); }
+
+let state = { profile: null, sessions: [], selectedBands: [] };
+
+// ── Persistence ───────────────────────────────────────────────
+
+async function load() {
+  if (!currentUser) return;
+  if (currentUser.isGuest) {
+    try {
+      const raw = localStorage.getItem(GUEST_DATA_KEY);
+      if (raw) { const p = JSON.parse(raw); state.profile = p.profile || null; state.sessions = p.sessions || []; }
+    } catch (e) {}
+    return;
+  }
+  const accountDoc = await db.collection('accounts').doc(currentUser.username).get();
+  if (accountDoc.exists && accountDoc.data().pullupProfile) {
+    state.profile = accountDoc.data().pullupProfile;
+  }
+  const snap = await db.collection('accounts').doc(currentUser.username)
+    .collection('pullups').orderBy('date', 'asc').get();
+  state.sessions = snap.docs.map(d => d.data());
+}
+
+async function save() {
+  if (!currentUser) return;
+  if (currentUser.isGuest) {
+    localStorage.setItem(GUEST_DATA_KEY, JSON.stringify({ profile: state.profile, sessions: state.sessions }));
+    showSaved();
+    return;
+  }
+  const batch = db.batch();
+  const accountRef = db.collection('accounts').doc(currentUser.username);
+  if (state.profile) batch.update(accountRef, { pullupProfile: state.profile });
+  if (state.sessions.length > 0) {
+    const s = state.sessions[state.sessions.length - 1];
+    const ref = accountRef.collection('pullups').doc(s.id || String(new Date(s.date).getTime()));
+    batch.set(ref, s);
+  }
+  await batch.commit();
+  showSaved();
+}
+
+async function migrateGuestSessions(username) {
+  try {
+    const raw = localStorage.getItem(GUEST_DATA_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (!parsed.sessions?.length) return;
+    const batch = db.batch();
+    const accountRef = db.collection('accounts').doc(username);
+    parsed.sessions.forEach(s => {
+      const ref = accountRef.collection('pullups').doc(s.id || String(new Date(s.date).getTime()));
+      batch.set(ref, s);
+    });
+    if (parsed.profile) batch.update(accountRef, { pullupProfile: parsed.profile });
+    await batch.commit();
+    localStorage.removeItem(GUEST_DATA_KEY);
+  } catch (e) {}
+}
+
+// ── Auth ──────────────────────────────────────────────────────
+
+function showAccountError(tab, msg) {
+  const el = document.getElementById(tab + '-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function switchAccountTab(tab) {
+  document.getElementById('tab-login').style.display  = tab === 'login'  ? 'block' : 'none';
+  document.getElementById('tab-create').style.display = tab === 'create' ? 'block' : 'none';
+  document.getElementById('tab-login-btn').className  = 'btn ' + (tab === 'login'  ? 'btn-pine' : 'btn-outline');
+  document.getElementById('tab-create-btn').className = 'btn ' + (tab === 'create' ? 'btn-pine' : 'btn-outline');
+}
+
+async function handleLogin() {
+  document.getElementById('login-error').style.display = 'none';
+  const username = document.getElementById('login-username').value.trim().toLowerCase();
+  const pin      = document.getElementById('login-pin').value.trim();
+  if (!username || !pin) { showAccountError('login', 'Username and PIN required.'); return; }
+  try {
+    const doc = await db.collection('accounts').doc(username).get();
+    if (!doc.exists) { showAccountError('login', 'Account not found.'); return; }
+    if (doc.data().pinHash !== await hashPin(pin)) { showAccountError('login', 'Incorrect PIN.'); return; }
+    await signIn(username);
+  } catch (e) { showAccountError('login', 'Login failed. Check connection.'); }
+}
+
+async function handleCreate() {
+  document.getElementById('create-error').style.display = 'none';
+  const username = document.getElementById('create-username').value.trim().toLowerCase();
+  const pin      = document.getElementById('create-pin').value.trim();
+  if (!username || username.length < 2 || username.length > 20 || !/^[a-z0-9_-]+$/.test(username)) {
+    showAccountError('create', '2–20 characters, letters/numbers/hyphens only.'); return;
+  }
+  if (!pin || !/^\d{4,8}$/.test(pin)) { showAccountError('create', 'PIN must be 4–8 digits.'); return; }
+  try {
+    const existing = await db.collection('accounts').doc(username).get();
+    if (existing.exists) { showAccountError('create', 'Username taken.'); return; }
+    await db.collection('accounts').doc(username).set({ pinHash: await hashPin(pin), createdAt: new Date().toISOString() });
+    await migrateGuestSessions(username);
+    await signIn(username);
+  } catch (e) { showAccountError('create', 'Could not create account. Check connection.'); }
+}
+
+function handleGuest() {
+  currentUser = { username: 'Guest', isGuest: true };
+  renderHeader();
+  loadAndRender();
+}
+
+async function signIn(username) {
+  currentUser = { username };
+  localStorage.setItem(LOCAL_USER_KEY, username);
+  renderHeader();
+  await loadAndRender();
+}
+
+function signOut() {
+  currentUser = null;
+  state = { profile: null, sessions: [], selectedBands: [] };
+  localStorage.removeItem(LOCAL_USER_KEY);
+  document.getElementById('header-sub').textContent = 'Zero to proficiency · resistance band protocol';
+  showView('account');
+}
+
+function renderHeader() {
+  if (!currentUser) return;
+  const el = document.getElementById('header-sub');
+  if (currentUser.isGuest) {
+    el.textContent = 'Guest · data saves locally';
+  } else {
+    el.textContent = `Signed in as ${currentUser.username}`;
+  }
+}
+
+function showSaved() {
+  const el = document.getElementById('saveStatus');
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 2000);
+}
+
+// ── Recommendation engine ─────────────────────────────────────
+
+function recommendLoadout(weight, repBucket) {
+  const targets = { '0-5': 0.55, '5-8': 0.40, '8-10': 0.28, '10-12': 0.18, '12-15': 0.08 };
+  const targetAssist = (targets[repBucket] ?? 0.30) * weight;
+  const keys = Object.keys(BANDS);
+  const singles = keys.map(k => ({ bands: [k], mid: adjustedMid(k) }));
+  const pairs = [];
+  for (let i = 0; i < keys.length; i++)
+    for (let j = i + 1; j < keys.length; j++)
+      pairs.push({ bands: [keys[i], keys[j]], mid: adjustedMid(keys[i]) + adjustedMid(keys[j]) });
+  const all = [...singles, ...pairs];
+  all.forEach(c => { c.score = Math.abs(c.mid - targetAssist) + (c.bands.length - 1) * 4; });
+  all.sort((a,b) => a.score - b.score);
+  const best = all[0];
+  return {
+    bands: best.bands,
+    assist: best.mid,
+    detail: `${LOOP_LABEL[state.profile?.loopPosition ?? 'knee']} · ~${Math.round(best.mid)} lb assist`,
+  };
+}
+
+// ── 2-Workout rule ────────────────────────────────────────────
+
+function checkLevelUp() {
+  if (state.sessions.length < 2) return null;
+  const recent = state.sessions.slice(-2);
+  if (JSON.stringify([...recent[0].bands].sort()) !== JSON.stringify([...recent[1].bands].sort())) return null;
+  if (!recent.every(s => s.sets >= 3 && s.reps >= 8)) return null;
+  const cur = recent[0].bands;
+  let next;
+  if (cur.length > 1) {
+    next = [...cur].sort((a,b) => BANDS[b].mid - BANDS[a].mid).slice(1);
+  } else {
+    const lighter = BAND_ORDER.slice(BAND_ORDER.indexOf(cur[0]) + 1);
+    if (lighter.length === 0) return { done: true };
+    next = [lighter[0]];
+  }
+  return { from: cur, to: next };
+}
+
+const totalVolume  = () => state.sessions.reduce((s, x) => s + x.volume, 0);
+const currentFloor = () => state.sessions.length === 0 ? null : state.sessions[state.sessions.length - 1].assist;
+
+// ── Views ─────────────────────────────────────────────────────
+
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + name).classList.add('active');
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  if (name === 'home')     renderHome();
+  if (name === 'progress') { renderChart(); renderProfileEdit(); }
+  if (name === 'setup')    prefillSetup();
+}
+
+function prefillSetup() {
+  if (state.profile) {
+    document.getElementById('setup-weight').value = state.profile.weight;
+    document.getElementById('setup-reps').value   = state.profile.repBucket;
+    document.getElementById('setup-loop').value   = state.profile.loopPosition ?? 'knee';
+  }
+}
+
+function renderHome() {
+  if (!state.profile) { showView('setup'); return; }
+  const rec = recommendLoadout(state.profile.weight, state.profile.repBucket);
+  document.getElementById('loadout-bands').textContent = rec.bands.map(k => BANDS[k].name).join(' + ');
+  document.getElementById('loadout-detail').textContent = rec.detail;
+  document.getElementById('stat-bw').textContent       = state.profile.weight + ' lb';
+  document.getElementById('stat-sessions').textContent  = state.sessions.length;
+  document.getElementById('stat-volume').textContent    = Math.round(totalVolume()).toLocaleString() + ' lb';
+  const floor = currentFloor();
+  document.getElementById('stat-floor').textContent = floor === null ? '—' : Math.round(floor) + ' lb';
+
+  const sb = document.getElementById('suggestion-box');
+  const suggestion = checkLevelUp();
+  if (suggestion?.done) {
+    sb.innerHTML = '<div class="suggestion"><span class="lbl">Milestone</span>You\'ve cleared the lightest band. Try unassisted.</div>';
+  } else if (suggestion) {
+    sb.innerHTML = `<div class="suggestion"><span class="lbl">2-Workout Rule</span>Two clean 3×8 at ${suggestion.from.map(k => BANDS[k].name).join(' + ')}. Suggested next loadout: <b>${suggestion.to.map(k => BANDS[k].name).join(' + ')}</b>.</div>`;
+  } else {
+    sb.innerHTML = '';
+  }
+
+  const list = document.getElementById('recent-list');
+  if (state.sessions.length === 0) {
+    list.innerHTML = '<div class="empty">No sessions logged yet.</div>';
+  } else {
+    const minAssist = Math.min(...state.sessions.map(x => x.assist));
+    list.innerHTML = [...state.sessions].slice(-6).reverse().map(s => {
+      const isPR = s.assist === minAssist;
+      return `<div class="hist-row">
+        <div>
+          <div class="hist-bands">${s.bands.map(k => BANDS[k].name).join(' + ')}${isPR ? '<span class="pill-pr">PR</span>' : ''}</div>
+          <div class="hist-meta">${s.sets}×${s.reps} · ${Math.round(s.assist)} lb assist · ${formatDate(s.date)}</div>
+        </div>
+        <div>
+          <div class="hist-vol">${Math.round(s.volume).toLocaleString()}</div>
+          <div class="hist-vol-lbl">lb volume</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function renderProfileEdit() {
+  if (state.profile) {
+    document.getElementById('edit-weight').value = state.profile.weight;
+    document.getElementById('edit-loop').value   = state.profile.loopPosition ?? 'knee';
+  }
+}
+
+// ── Chart ─────────────────────────────────────────────────────
+
+function renderChart() {
+  const canvas = document.getElementById('chart');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.clientWidth, cssH = 240;
+  canvas.width = cssW * dpr; canvas.height = cssH * dpr;
+  ctx.setTransform(1,0,0,1,0,0); ctx.scale(dpr, dpr);
+  ctx.clearRect(0, 0, cssW, cssH);
+
+  if (state.sessions.length === 0) {
+    ctx.fillStyle = '#6B6457';
+    ctx.font = "italic 300 15px 'Fraunces', serif";
+    ctx.textAlign = 'center';
+    ctx.fillText('Log your first workout to see the chart', cssW/2, cssH/2);
+    return;
+  }
+
+  const pad = { l: 42, r: 14, t: 18, b: 28 };
+  const w = cssW - pad.l - pad.r, h = cssH - pad.t - pad.b;
+  const data = state.sessions.map(s => s.assist);
+  const maxY = Math.max(...data, 10);
+
+  ctx.strokeStyle = 'rgba(44,59,45,0.10)'; ctx.lineWidth = 1;
+  ctx.fillStyle = '#6B6457'; ctx.font = "500 10px 'DM Mono', monospace"; ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.t + (h / 4) * i;
+    ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(pad.l + w, y); ctx.stroke();
+    ctx.fillText(Math.round(maxY - (maxY / 4) * i) + '', pad.l - 6, y + 3);
+  }
+
+  ctx.strokeStyle = '#4A6741'; ctx.setLineDash([4,4]); ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad.l, pad.t + h); ctx.lineTo(pad.l + w, pad.t + h); ctx.stroke();
+  ctx.setLineDash([]);
+
+  const stepX = data.length === 1 ? 0 : w / (data.length - 1);
+  ctx.strokeStyle = '#2C3B2D'; ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = pad.l + stepX * i, y = pad.t + h - (v / maxY) * h;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  ctx.fillStyle = '#C4A882'; ctx.strokeStyle = '#2C3B2D'; ctx.lineWidth = 2;
+  data.forEach((v, i) => {
+    const x = pad.l + stepX * i, y = pad.t + h - (v / maxY) * h;
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  });
+
+  ctx.fillStyle = '#6B6457'; ctx.textAlign = 'center';
+  ctx.fillText(`${data.length} session${data.length === 1 ? '' : 's'}`, pad.l + w/2, cssH - 8);
+}
+
+// ── Markdown export ───────────────────────────────────────────
+
+function exportMarkdown() {
+  if (state.sessions.length === 0) return '_No sessions to export._';
+  const weeks = {};
+  state.sessions.forEach(s => {
+    const d = new Date(s.date);
+    const onejan = new Date(d.getFullYear(), 0, 1);
+    const wk = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+    const key = `${d.getFullYear()}-W${String(wk).padStart(2,'0')}`;
+    (weeks[key] = weeks[key] || []).push(s);
+  });
+  let out = `# Apex Pull-Up Tracker — Weekly Summary\n\n**Body weight:** ${state.profile.weight} lb\n**Total sessions:** ${state.sessions.length}\n**Total volume:** ${Math.round(totalVolume()).toLocaleString()} lb\n\n`;
+  Object.keys(weeks).sort().reverse().forEach(wk => {
+    out += `## ${wk}\n\n| Date | Bands | Sets×Reps | Assist (lb) | Volume (lb) |\n|------|-------|-----------|-------------|-------------|\n`;
+    weeks[wk].forEach(s => {
+      const date = new Date(s.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+      out += `| ${date} | ${s.bands.map(k => BANDS[k].name).join(' + ')} | ${s.sets}×${s.reps} | ${Math.round(s.assist)} | ${Math.round(s.volume).toLocaleString()} |\n`;
+    });
+    const wkVol = weeks[wk].reduce((a,s) => a + s.volume, 0);
+    const wkAvg = weeks[wk].reduce((a,s) => a + s.assist, 0) / weeks[wk].length;
+    out += `\n**Week total:** ${Math.round(wkVol).toLocaleString()} lb · **Avg assist:** ${Math.round(wkAvg)} lb\n\n`;
+  });
+  return out;
+}
+
+// ── Rest timer ────────────────────────────────────────────────
+
+let timerInt = null, timerLeft = REST_SECONDS;
+const fmtTime = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+function renderTimer() {
+  const el = document.getElementById('timer-num');
+  el.textContent = fmtTime(timerLeft);
+  el.className = 'num' + (timerLeft <= 10 && timerLeft > 0 ? ' warn' : '') + (timerLeft === 0 ? ' go' : '');
+}
+function startTimer() {
+  if (timerInt) clearInterval(timerInt);
+  timerLeft = REST_SECONDS; renderTimer();
+  timerInt = setInterval(() => {
+    timerLeft--; renderTimer();
+    if (timerLeft <= 0) {
+      clearInterval(timerInt); timerInt = null;
+      try { navigator.vibrate && navigator.vibrate([200,100,200,100,400]); } catch(e){}
+      toast('Rest complete · Go');
+    }
+  }, 1000);
+}
+function resetTimer() { if (timerInt) clearInterval(timerInt); timerInt = null; timerLeft = REST_SECONDS; renderTimer(); }
+
+// ── Toast ─────────────────────────────────────────────────────
+
+let toastTO;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTO);
+  toastTO = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── Boot ──────────────────────────────────────────────────────
+
+async function loadAndRender() {
+  await load();
+  showView(state.profile ? 'home' : 'setup');
+}
+
+async function boot() {
+  const savedUsername = localStorage.getItem(LOCAL_USER_KEY);
+  if (savedUsername) {
+    currentUser = { username: savedUsername };
+    renderHeader();
+    await loadAndRender();
+  } else {
+    showView('account');
+  }
+}
+
+// ── Wire up ───────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', () => {
+  firebase.initializeApp(firebaseConfig);
+  db = firebase.firestore();
+  renderTimer();
+
+  // Nav
+  document.querySelectorAll('#nav button').forEach(b => b.addEventListener('click', () => showView(b.dataset.view)));
+
+  // Account screen
+  document.getElementById('tab-login-btn').addEventListener('click', () => switchAccountTab('login'));
+  document.getElementById('tab-create-btn').addEventListener('click', () => switchAccountTab('create'));
+  document.getElementById('login-btn').addEventListener('click', handleLogin);
+  document.getElementById('create-btn').addEventListener('click', handleCreate);
+  document.getElementById('guest-btn').addEventListener('click', handleGuest);
+
+  // Enter key on login/create fields
+  ['login-pin', 'login-username'].forEach(id =>
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); }));
+  ['create-pin', 'create-username'].forEach(id =>
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') handleCreate(); }));
+
+  // Profile setup
+  document.getElementById('setup-save').addEventListener('click', () => {
+    const weight = parseFloat(document.getElementById('setup-weight').value);
+    const repBucket    = document.getElementById('setup-reps').value;
+    const loopPosition = document.getElementById('setup-loop').value;
+    if (!weight || weight < 50 || weight > 500) { toast('Enter weight 50–500 lb'); return; }
+    if (!repBucket) { toast('Select max reps'); return; }
+    state.profile = { weight, repBucket, loopPosition, createdAt: state.profile?.createdAt || new Date().toISOString() };
+    save();
+    toast('Profile saved');
+    showView('home');
+  });
+
+  // Band toggles
+  document.querySelectorAll('#band-grid .band-pill').forEach(p => {
+    p.addEventListener('click', () => {
+      p.classList.toggle('active');
+      const k = p.dataset.band;
+      if (state.selectedBands.includes(k)) state.selectedBands = state.selectedBands.filter(x => x !== k);
+      else state.selectedBands.push(k);
+    });
+  });
+
+  // Log workout
+  document.getElementById('log-save').addEventListener('click', () => {
+    if (!state.profile) { toast('Set up profile first'); showView('setup'); return; }
+    if (state.selectedBands.length === 0) { toast('Select at least one band'); return; }
+    const sets = parseInt(document.getElementById('log-sets').value, 10);
+    const reps = parseInt(document.getElementById('log-reps').value, 10);
+    if (!sets || !reps || sets < 1 || reps < 1) { toast('Enter sets and reps'); return; }
+    const assist   = state.selectedBands.reduce((a, k) => a + adjustedMid(k), 0);
+    const volume   = sets * reps * (state.profile.weight - assist);
+    const id       = String(Date.now());
+    state.sessions.push({ id, date: new Date().toISOString(), bands: [...state.selectedBands], sets, reps, assist, volume });
+    save();
+    toast(`Logged · ${Math.round(volume).toLocaleString()} lb volume`);
+    state.selectedBands = [];
+    document.querySelectorAll('#band-grid .band-pill').forEach(p => p.classList.remove('active'));
+    startTimer();
+  });
+
+  // Timer
+  document.getElementById('timer-start').addEventListener('click', startTimer);
+  document.getElementById('timer-reset').addEventListener('click', resetTimer);
+
+  // Export
+  document.getElementById('export-btn').addEventListener('click', () => {
+    const md = exportMarkdown();
+    const out = document.getElementById('export-out');
+    out.textContent = md; out.style.display = 'block';
+    try { navigator.clipboard.writeText(md); toast('Markdown copied'); } catch(e) { toast('Markdown ready below'); }
+  });
+
+  // Profile edit
+  document.getElementById('edit-save').addEventListener('click', () => {
+    const w = parseFloat(document.getElementById('edit-weight').value);
+    if (!w || w < 50 || w > 500) { toast('Enter a valid weight'); return; }
+    state.profile.weight       = w;
+    state.profile.loopPosition = document.getElementById('edit-loop').value;
+    save(); toast('Profile updated'); renderHome();
+  });
+
+  // Sign out
+  document.getElementById('sign-out-btn').addEventListener('click', signOut);
+
+  boot();
+});
+</script>
+</body>
+</html>
