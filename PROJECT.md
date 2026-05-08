@@ -7,7 +7,7 @@
 Single-file webapp that coaches Dan through the HAPBEAR banded pull-up protocol toward unassisted pull-ups. Used on an iPad in the basement gym. Login shared with SendIt (same username + PIN).
 
 ## Live URL
-https://outsidedan.github.io/ApexPullUp/
+https://outsidedan.github.io/apex-pull-up/
 
 ## Key files
 - `index.html` — entire app
