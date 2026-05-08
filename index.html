@@ -578,6 +578,39 @@ function recommendLoadout(weight, repBucket) {
   };
 }
 
+function recommendDeload(currentRepBucket, weight, loopPosition) {
+  const tierDown = { '12-15': '10-12', '10-12': '8-10', '8-10': '5-8', '5-8': '0-5', '0-5': '0-5' };
+  const bucket = tierDown[currentRepBucket] ?? '0-5';
+  const targets = { '0-5': 0.55, '5-8': 0.40, '8-10': 0.28, '10-12': 0.18, '12-15': 0.08 };
+  const mult = LOOP_MULT[loopPosition ?? 'knee'];
+  const targetAssist = (targets[bucket] ?? 0.55) * weight;
+  const keys = Object.keys(BANDS);
+  const adj = k => BANDS[k].mid * mult;
+  const singles  = keys.map(k => ({ bands: [k], mid: adj(k) }));
+  const pairs = [];
+  for (let i = 0; i < keys.length; i++)
+    for (let j = i + 1; j < keys.length; j++)
+      pairs.push({ bands: [keys[i], keys[j]], mid: adj(keys[i]) + adj(keys[j]) });
+  const triples = [];
+  for (let i = 0; i < keys.length; i++)
+    for (let j = i + 1; j < keys.length; j++)
+      for (let l = j + 1; l < keys.length; l++)
+        triples.push({ bands: [keys[i], keys[j], keys[l]], mid: adj(keys[i]) + adj(keys[j]) + adj(keys[l]) });
+  const all = [...singles, ...pairs, ...triples];
+  all.forEach(c => { c.score = Math.abs(c.mid - targetAssist) + (c.bands.length - 1) * 4; });
+  all.sort((a, b) => a.score - b.score);
+  const best = all[0];
+  const currentRec = recommendLoadout(weight, currentRepBucket);
+  if (best.mid <= currentRec.assist) return null;
+  return {
+    bands: best.bands,
+    assist: best.mid,
+    detail: `${LOOP_LABEL[loopPosition ?? 'knee']} · ~${Math.round(best.mid)} lb assist`,
+    targetSets: TARGET_SETS,
+    targetReps: TARGET_REPS,
+  };
+}
+
 // ── 2-Workout rule ────────────────────────────────────────────
 
 function checkLevelUp() {
